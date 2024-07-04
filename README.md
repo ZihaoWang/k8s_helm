@@ -2,6 +2,13 @@
 
 This document provides a step-by-step guide to containerize and deploy a Flask-based machine learning application using Docker, Kubernetes (Minikube), and Helm.
 
+The following settings are implemented:
+
+* Two different Docker containers for app.py and training.py.
+* A Cronjob of training.py for each 5 minutes.
+* A Kubernetes Job of training.py before the deployment of APP, to prevent error caused by nonexist of trained model before the first Cronjob.
+* Regular health (readness and liveness) check of the APP.
+
 # Prerequisites
 
 * Docker
@@ -15,21 +22,16 @@ This document provides a step-by-step guide to containerize and deploy a Flask-b
 assignment/
 ├── src/
 │   ├── app/
-│   │   └── main.py
+│   │   ├── main.py
+│   │   └── Dockerfile
 │   ├── data/
 │   │   └── diabetes.csv
 │   ├── models/
-│   │   └── trained models will be saved here
+│   │   └── (the trained models will be saved here)
 │   └── training/
-│       └── train.py
-├── Dockerfile
-├── Dockerfile.train
+│       ├── train.py
+│       └── Dockerfile.train
 ├── requirements.txt
-├── k8s/
-│   ├── flask-app-deployment.yaml
-│   ├── flask-app-service.yaml
-│   ├── model-training-job.yaml
-│   ├── model-training-cronjob.yaml
 ├── helm-chart/
 │   ├── Chart.yaml
 │   ├── values.yaml
@@ -37,6 +39,9 @@ assignment/
 │       ├── deployment.yaml
 │       ├── service.yaml
 │       └── cronjob.yaml
+│       ├── job_init_hook.yaml
+│       ├── pv.yaml
+│       └── pvc.yaml
 ├── scripts/
 │   ├── build_push_images.sh
 │   └── deploy.sh
@@ -45,24 +50,20 @@ assignment/
 
 # Step-by-Step Guide
 
-1. Build and Push Docker Images
-
-Dockerfile for Flask App (assignment/Dockerfile)
+1. Build and push Docker images for the Flask APP and the training script.
 
 ```
 cd assignment
 ./scripts/build_push_images.sh
 ```
 
-2. Start Minikube
-
-Start Minikube to create a local Kubernetes cluster.
+2. Start a local Kubernetes cluster using Minikube.
 
 ```
 minikube start
 ```
 
-3. Deploy Using Helm
+3. Deploy the application to the Kubernetes cluster using Helm..
 
 ```
 ./scripts/deploy.sh
@@ -70,22 +71,66 @@ minikube start
 
 4. Access the Flask App
 
-Get the Minikube IP address and access the Flask app.
-
+Forward a port from a Kubernetes service to a local machine, allowing us to access the service locally for testing or other purposes.
 ```
-minikube ip
+kubectl port-forward --address 0.0.0.0 -n default service/flask-ml-app 30001:80
 ```
 
-Access the Flask app via http://<minikube-ip>:30001.
-
-5. Verify Model Training CronJob
-
-Check the status of the CronJob and view logs to verify it runs every 5 minutes.
-
+Then, we can access the Flask APP via http://localhost:30001/predictions,
 ```
-# Check the status of the CronJob
+curl localhost:30001/predictions
+```
+or check the health of our APP:
+```
+curl localhost:30001/health
+```
+
+We can also check the status of our Cronjob.
+```
 kubectl get cronjobs
-
-# Check the logs of a job run
-kubectl logs job/model-training-cronjob-<job-id>
 ```
+
+5. Undeploy the Flask APP
+```
+./scripts/undeploy.sh
+```
+
+# Purpose of scripts
+
+* scripts/build\_push\_images.sh
+    - Script to build and push Docker images for the Flask app and the training script to Docker Hub.
+
+* scripts/deploy.sh
+    - Script to deploy the application using Helm.
+
+* scripts/undeploy.sh
+    - Script to undeploy the application using Helm.
+
+# Purpose of Manifests and Charts
+
+* helm-chart/Chart.yaml
+
+    - Metadata for the Helm chart, including name, description, and version.
+
+* helm-chart/values.yaml
+
+    - Default values for the Helm chart, such as image repository, tag, service configuration, and cronjob schedule.
+
+* helm-chart/templates/deployment.yaml
+    - Kubernetes Deployment manifest template for the Flask app. It specifies the number of replicas, container image, ports, health checks, liveness checks and volumes.
+
+* helm-chart/templates/service.yaml
+    - Kubernetes Service manifest template for exposing the Flask app.
+
+* helm-chart/templates/cronjob.yaml
+    - Kubernetes CronJob manifest template for running the training script at scheduled intervals.
+
+* helm-chart/templates/job\_init\_hook.yaml
+    - A Kubernetes Job manifest template for initializing a training task before the APP starts.
+
+* helm-chart/templates/pv.yaml
+    - Kubernetes PersistentVolume (PV) manifest template. It defines the storage available to the cluster, which can be used by PersistentVolumeClaims (PVCs).
+
+* helm-chart/templates/pvc.yaml
+    - Kubernetes PersistentVolumeClaim (PVC) manifest template. It requests storage resources defined by a PersistentVolume (PV), ensuring data persists across pod restarts.
+

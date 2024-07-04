@@ -18,6 +18,9 @@ def get_latest_model() -> Tuple[object, str]:
     model = load(MODEL_PATH + model_name)
     return model, model_name
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify(status='ok')
 
 @app.route("/predictions", methods=["GET"])
 def index():

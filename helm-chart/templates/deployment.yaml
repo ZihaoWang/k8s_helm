@@ -30,6 +30,20 @@ spec:
         - name: models-storage
           mountPath: /app/models
 
+        readinessProbe:
+          httpGet:
+            path: /health  # The path to check for readiness
+            port: 5000
+          initialDelaySeconds: 5  # Initial delay before starting readiness checks
+          periodSeconds: 10  # Frequency of readiness checks
+
+        livenessProbe:
+          httpGet:
+            path: /health  # The path to check for liveness
+            port: 5000
+          initialDelaySeconds: 15  # Initial delay before starting liveness checks
+          periodSeconds: 20  # Frequency of liveness checks
+
       volumes:
       - name: models-storage
         persistentVolumeClaim:
