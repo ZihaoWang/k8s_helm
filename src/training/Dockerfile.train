@@ -8,7 +8,9 @@ COPY requirements.txt ./
 
 RUN pip install -r requirements.txt
 
-COPY src/ /app
+COPY src/training /app/training
+COPY src/data /app/data
+COPY src/models /app/models
 
 CMD ["python", "training/train.py"]
 

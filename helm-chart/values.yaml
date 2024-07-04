@@ -11,7 +11,7 @@ service:
   nodePort: 30001
 
 cronjob:
-  schedule: "*/1 * * * *"
+  schedule: "*/5 * * * *"
 
   image: evensong/model-training:latest
 
