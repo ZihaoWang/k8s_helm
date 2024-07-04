@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+
+kind: Job
+
+metadata:
+  name: model-training-job-initial
+  annotations:
+    "helm.sh/hook": "post-install,post-upgrade"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+
+spec:
+  ttlSecondsAfterFinished: 60
+
+  template:
+    spec:
+      containers:
+      - name: model-training
+        image: "{{ .Values.cronjob.image }}"
+
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: model-pvc
+
+      restartPolicy: OnFailure
+

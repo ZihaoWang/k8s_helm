@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+
+kind: CronJob
+
+metadata:
+  name: model-training-cronjob
+
+spec:
+  schedule: "{{ .Values.cronjob.schedule }}"
+
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: model-training
+            image: "{{ .Values.cronjob.image }}"
+
+            volumeMounts:
+            - name: models-storage
+              mountPath: /app/models
+
+          volumes:
+          - name: models-storage
+            persistentVolumeClaim:
+              claimName: model-pvc
+
+          restartPolicy: OnFailure
+

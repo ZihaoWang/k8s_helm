@@ -1,0 +1,24 @@
+image:
+  repository: evensong/flask-app
+
+  tag: latest
+
+service:
+  type: NodePort
+
+  port: 80
+
+  nodePort: 30001
+
+cronjob:
+  schedule: "*/1 * * * *"
+
+  image: evensong/model-training:latest
+
+replicaCount: 3  # increased replicas for high availability
+
+persistence:
+  enabled: true
+
+  size: 1Gi
+
